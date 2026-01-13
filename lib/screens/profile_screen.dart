@@ -39,7 +39,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // Log link click
     try {
       final auth = context.read<AuthProvider>();
-      await Api.post('/analytics/', {'event_type': 'link_click', 'event_data': platform},
+      await Api.post(
+          '/analytics/', {'event_type': 'link_click', 'event_data': platform},
           headers: await auth.authHeader());
     } catch (e) {
       debugPrint('Failed to log link click: $e');
@@ -70,15 +71,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           final responseData = jsonDecode(l.body);
           if (responseData is List) {
             links = responseData;
-          } else if (responseData is Map &&
-              responseData.containsKey('data')) {
+          } else if (responseData is Map && responseData.containsKey('data')) {
             links = responseData['data'];
           }
         }
 
         // Fetch stats
-        final s = await Api.get('/analytics/stats',
-            headers: await auth.authHeader());
+        final s =
+            await Api.get('/analytics/stats', headers: await auth.authHeader());
         print('Stats GET response: ${s.statusCode} - ${s.body}');
         if (s.statusCode == 200) {
           stats = jsonDecode(s.body);
@@ -89,6 +89,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
           followersCount = profile!['followers_count'] ?? 0;
           followingCount = profile!['following_count'] ?? 0;
         }
+      } else if (p.statusCode == 401 || p.statusCode == 403) {
+        // Backend auth failed, but user is authenticated with Firebase
+        // Set up basic profile data from Firebase
+        profile = {
+          'username': auth.displayName ?? auth.email?.split('@')[0] ?? 'User',
+          'email': auth.email,
+          'id': auth.uid,
+          'followers_count': 0,
+          'following_count': 0,
+        };
+        links = [];
+        stats = {};
+        followersCount = 0;
+        followingCount = 0;
+      } else {
+        // Other errors
+        error = 'Failed to load profile: ${p.statusCode}';
+        return;
       }
 
       links = links
@@ -173,7 +191,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
+                const Icon(Icons.error_outline,
+                    size: 48, color: Colors.redAccent),
                 const SizedBox(height: 16),
                 Text('Could not load profile',
                     style: theme.textTheme.titleMedium
@@ -308,44 +327,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                  _buildStat("Followers", followersCount.toString()),
-                  _buildStat("Following", followingCount.toString()),
+                        _buildStat("Followers", followersCount.toString()),
+                        _buildStat("Following", followingCount.toString()),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            ElevatedButton(
-              onPressed: () {
-                if (profile != null && profile!['id'] != null) {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => FollowersScreen(userId: profile!['id']),
-                    ),
-                  );
-                }
-              },
-              child: const Text('Followers'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (profile != null && profile!['id'] != null) {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => FollowingScreen(userId: profile!['id']),
-                    ),
-                  );
-                }
-              },
-              child: const Text('Following'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      if (profile != null && profile!['id'] != null) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                FollowersScreen(userId: profile!['id']),
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text('Followers'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (profile != null && profile!['id'] != null) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                FollowingScreen(userId: profile!['id']),
+                          ),
+                        );
+                      }
+                    },
+                    child: const Text('Following'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
 
               // Name + Username
               Text(
@@ -381,8 +402,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildStat("Link Clicks", (stats['link_click'] ?? 0).toString()),
-                  _buildStat("Profile Views", (stats['profile_view'] ?? 0).toString()),
+                  _buildStat(
+                      "Link Clicks", (stats['link_click'] ?? 0).toString()),
+                  _buildStat(
+                      "Profile Views", (stats['profile_view'] ?? 0).toString()),
                   _buildStat("QR Scans", (stats['qr_scan'] ?? 0).toString()),
                 ],
               ),
@@ -434,7 +457,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: links.map((link) {
                     return InkWell(
-                      onTap: () => _launchUrl(link['link_url'], link['platform_name']),
+                      onTap: () =>
+                          _launchUrl(link['link_url'], link['platform_name']),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 6),
                         child: Row(
@@ -474,15 +498,15 @@ Widget _buildStat(String label, String count) {
       Text(
         count,
         style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-          color: Color.fromARGB(137, 255, 255, 255)
-        ),
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: Color.fromARGB(137, 255, 255, 255)),
       ),
       const SizedBox(height: 2),
       Text(
         label,
-        style: const TextStyle(fontSize: 13, color: Color.fromARGB(137, 255, 255, 255)),
+        style: const TextStyle(
+            fontSize: 13, color: Color.fromARGB(137, 255, 255, 255)),
       ),
     ],
   );

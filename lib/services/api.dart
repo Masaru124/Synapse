@@ -1,7 +1,7 @@
-// import 'dart:io';
-// import 'dart:convert';
-// import 'package:http/http.dart' as http;
-// import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
 
 // class Api {
 //   /// Automatically use correct host for emulator vs. device
@@ -75,15 +75,12 @@
 //   }
 // }
 
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:firebase_auth/firebase_auth.dart';
-
 class Api {
   static String get baseUrl {
-    // if (Platform.isAndroid) return 'http://10.0.2.2:8000/api';
-    // if (Platform.isIOS) return 'http://localhost:8000/api';
-    return 'https://tapcard-backend.onrender.com/api';
+    if (Platform.isAndroid)
+      return 'https://tapcard-backend-gkql.onrender.com/api';
+    if (Platform.isIOS) return 'https://tapcard-backend-gkql.onrender.com/api';
+    return 'https://tapcard-backend-gkql.onrender.com/api';
   }
 
   static Future<String?> _getToken() async {

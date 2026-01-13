@@ -32,8 +32,10 @@ class _FollowersScreenState extends State<FollowersScreen> {
           headers: await auth.authHeader());
       if (res.statusCode == 200) {
         followers = jsonDecode(res.body);
+      } else if (res.statusCode == 401 || res.statusCode == 403) {
+        error = 'Backend authentication failed. Social features unavailable.';
       } else {
-        error = 'Failed to load followers';
+        error = 'Failed to load followers: ${res.statusCode}';
       }
     } catch (e) {
       error = e.toString();

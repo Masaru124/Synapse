@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -68,6 +67,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         userNameController.text = profile!['username'] ?? '';
         emailController.text = profile!['email'] ?? '';
         bioController.text = profile!['bio'] ?? '';
+      } else if (profileRes.statusCode == 401 || profileRes.statusCode == 403) {
+        // Backend auth failed, use Firebase data
+        final auth = context.read<AuthProvider>();
+        profile = {
+          'username': auth.displayName ?? auth.email?.split('@')[0] ?? 'User',
+          'email': auth.email,
+          'fullname': auth.displayName ?? '',
+          'bio': '',
+        };
+        fullNameController.text = profile!['fullname'];
+        userNameController.text = profile!['username'];
+        emailController.text = profile!['email'];
+        bioController.text = profile!['bio'];
+      } else {
+        error = 'Failed to load profile: ${profileRes.statusCode}';
+        return;
       }
 
       if (linksRes.statusCode == 200) {
@@ -151,7 +166,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
 
       // Save profile
-      await Api.put(
+      final profileRes = await Api.put(
         '/user/profile',
         {
           'fullname': fullNameController.text.trim(),
@@ -161,6 +176,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         },
         headers: await auth.authHeader(),
       );
+
+      if (profileRes.statusCode == 401 || profileRes.statusCode == 403) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Cannot save profile: Backend authentication failed'),
+            backgroundColor: Colors.orange,
+          ));
+        }
+        return;
+      }
+      if (profileRes.statusCode != 200) {
+        throw Exception('Failed to save profile: ${profileRes.statusCode}');
+      }
 
       // Save social links
       for (var i = 0; i < validSocialLinks.length; i++) {
@@ -176,10 +204,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           final res = await Api.put('/user/social-links/${link['id']}', data,
               headers: await auth.authHeader());
           print('Social link PUT response: ${res.statusCode} - ${res.body}');
+          if (res.statusCode == 401 || res.statusCode == 403) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text(
+                    'Cannot save social links: Backend authentication failed'),
+                backgroundColor: Colors.orange,
+              ));
+            }
+            return;
+          }
         } else {
           final res = await Api.post('/user/social-links', data,
               headers: await auth.authHeader());
           print('Social link POST response: ${res.statusCode} - ${res.body}');
+          if (res.statusCode == 401 || res.statusCode == 403) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text(
+                    'Cannot save social links: Backend authentication failed'),
+                backgroundColor: Colors.orange,
+              ));
+            }
+            return;
+          }
           if (res.statusCode == 201 || res.statusCode == 200) {
             final created = jsonDecode(res.body);
             final index = socialLinks.indexWhere((s) =>
@@ -196,13 +244,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         return platform.isEmpty || url.isEmpty;
       });
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Profile updated successfully'),
-            backgroundColor: Colors.green,
-          ));
-          Navigator.of(context).pop(true);
-        }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Profile updated successfully'),
+          backgroundColor: Colors.green,
+        ));
+        Navigator.of(context).pop(true);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(

@@ -32,8 +32,10 @@ class _FollowingScreenState extends State<FollowingScreen> {
           headers: await auth.authHeader());
       if (res.statusCode == 200) {
         following = jsonDecode(res.body);
+      } else if (res.statusCode == 401 || res.statusCode == 403) {
+        error = 'Backend authentication failed. Social features unavailable.';
       } else {
-        error = 'Failed to load following';
+        error = 'Failed to load following: ${res.statusCode}';
       }
     } catch (e) {
       error = e.toString();
